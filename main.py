@@ -445,12 +445,16 @@ class MainWindow(QMainWindow):
         elif task['type'] == '锁定':
             os.system('rundll32.exe user32.dll,LockWorkStation')
     def show_reminder(self, task):
-        content = task.get('content', '')
-        debug_log(f'弹窗提醒：{task}')
-        QMessageBox.information(self, f'提醒：{task["name"]}', content or '时间到了！')
+        logging.info(f"弹窗提醒：{task}")
+        def popup():
+            title = f"提醒：{task['name']}"
+            content = task.get('content', '') or '时间到了！'
+            QMessageBox.information(None, title, content)
+        QTimer.singleShot(0, popup)
 
 def main():
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
