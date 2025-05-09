@@ -5,6 +5,8 @@
 **智能定时提醒器** 是一款基于 Python 和 PyQt5 开发的桌面定时任务管理软件。  
 支持多种周期类型的定时提醒、关机、重启、锁定等操作，支持最小化到系统托盘，适合日常工作和生活中的定时任务自动化管理。
 
+法定工作日、节假日调用接口：https://date.appworlds.cn/work?date=日期 不传日期默认为今天
+参考地址：https://appworlds.cn/holiday/
 ---
 
 ## 主要功能
@@ -63,6 +65,10 @@ pyinstaller -F main.py --add-data "output.ico;." --noconsole
 - 关闭或最小化窗口时，程序会驻留在系统托盘
 - 托盘图标右键菜单可还原窗口或退出程序
 - 所有日志信息写入 `app.log` 文件
+![image](https://github.com/user-attachments/assets/33843a11-bce1-47f5-919b-d9cbcff12848)
+![image](https://github.com/user-attachments/assets/c591e35c-cd70-4970-82bb-85d98e65c7f2)
+![image](https://github.com/user-attachments/assets/8daea369-bb5a-432b-8582-4d10bcce98ab)
+![image](https://github.com/user-attachments/assets/7cc15fbe-3d5d-4549-a106-86a25942d9d4)
 
 ---
 
