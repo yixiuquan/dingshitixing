@@ -155,7 +155,7 @@ class TaskDialog(QDialog):
     def __init__(self, parent=None, task=None):
         super().__init__(parent)
         self.setWindowTitle('任务编辑')
-        self.resize(400, 260)
+        self.resize(400, 300)
         layout = QVBoxLayout()
         form_layout = QFormLayout()
         self.name_edit = QLineEdit()
@@ -163,10 +163,21 @@ class TaskDialog(QDialog):
         self.type_combo.addItems(['提醒', '关机', '重启', '锁定'])
         self.content_edit = QLineEdit()
         self.cycle_selector = CycleSelector()
+        # 新增提醒时间段
+        self.remind_start_edit = QTimeEdit()
+        self.remind_start_edit.setDisplayFormat('HH:mm')
+        self.remind_start_edit.setTime(QTime(8, 0))
+        self.remind_end_edit = QTimeEdit()
+        self.remind_end_edit.setDisplayFormat('HH:mm')
+        self.remind_end_edit.setTime(QTime(20, 0))
         form_layout.addRow('任务名称：', self.name_edit)
         form_layout.addRow('类型：', self.type_combo)
         form_layout.addRow('提醒内容：', self.content_edit)
         form_layout.addRow('周期选择：', self.cycle_selector)
+        self.remind_start_row = form_layout.rowCount()
+        form_layout.addRow('提醒开始时间：', self.remind_start_edit)
+        self.remind_end_row = form_layout.rowCount()
+        form_layout.addRow('提醒结束时间：', self.remind_end_edit)
         layout.addLayout(form_layout)
         btn_layout = QHBoxLayout()
         self.btn_ok = QPushButton('确定')
@@ -177,17 +188,43 @@ class TaskDialog(QDialog):
         self.setLayout(layout)
         self.btn_ok.clicked.connect(self.accept)
         self.btn_cancel.clicked.connect(self.reject)
+        # 类型切换时显示/隐藏提醒时间段
+        self.type_combo.currentTextChanged.connect(self.update_remind_time_visible)
+        self.update_remind_time_visible()
         if task:
             self.name_edit.setText(task['name'])
             self.type_combo.setCurrentText(task['type'])
             self.content_edit.setText(task.get('content', ''))
-            self.cycle_selector.set_cycle(task['cycle_type'], task['days'], task['time'], task['interval'])
+            self.cycle_selector.set_cycle(
+                task['cycle_type'],
+                task.get('days', []),
+                task.get('time', '00:00:00'),
+                task.get('interval', '00:00:00')
+            )
+            # 仅提醒类型才填充时间段
+            if task.get('type', '提醒') == '提醒':
+                start = task.get('remind_start', '08:00')
+                end = task.get('remind_end', '20:00')
+                sh, sm = map(int, start.split(':'))
+                eh, em = map(int, end.split(':'))
+                self.remind_start_edit.setTime(QTime(sh, sm))
+                self.remind_end_edit.setTime(QTime(eh, em))
         else:
             # 新建任务时，时间默认当前
             h, m, s = get_now_hms()
             self.cycle_selector.hour_spin.setValue(h)
             self.cycle_selector.minute_spin.setValue(m)
             self.cycle_selector.second_spin.setValue(s)
+            self.remind_start_edit.setTime(QTime(8, 0))
+            self.remind_end_edit.setTime(QTime(20, 0))
+    def update_remind_time_visible(self):
+        is_remind = self.type_combo.currentText() == '提醒'
+        self.remind_start_edit.setVisible(is_remind)
+        self.remind_end_edit.setVisible(is_remind)
+        # 还要隐藏label
+        form_layout = self.layout().itemAt(0).layout()
+        form_layout.labelForField(self.remind_start_edit).setVisible(is_remind)
+        form_layout.labelForField(self.remind_end_edit).setVisible(is_remind)
     def get_task(self):
         name = self.name_edit.text().strip()
         ttype = self.type_combo.currentText()
@@ -198,7 +235,7 @@ class TaskDialog(QDialog):
         time_str = f'{h:02d}:{m:02d}:{s:02d}'
         interval_h, interval_m, interval_s = self.cycle_selector.get_interval()
         interval_str = f'{interval_h:02d}:{interval_m:02d}:{interval_s:02d}'
-        return {
+        task = {
             'name': name,
             'type': ttype,
             'content': content,
@@ -207,6 +244,12 @@ class TaskDialog(QDialog):
             'time': time_str,
             'interval': interval_str
         }
+        if ttype == '提醒':
+            remind_start = self.remind_start_edit.time().toString('HH:mm')
+            remind_end = self.remind_end_edit.time().toString('HH:mm')
+            task['remind_start'] = remind_start
+            task['remind_end'] = remind_end
+        return task
 
 class ReminderSignal(QObject):
     remind = pyqtSignal(dict)
@@ -241,7 +284,7 @@ class MainWindow(QMainWindow):
         self.tray_icon.show()
         # 菜单栏
         menubar = QMenuBar(self)
-        task_menu = menubar.addMenu('任务')
+        task_menu = menubar.addMenu('菜单')
         self.action_add = QAction('新增', self)
         task_menu.addAction(self.action_add)
         self.setMenuBar(menubar)
@@ -417,6 +460,21 @@ class MainWindow(QMainWindow):
                 self.scheduler.add_job(self.trigger_task, trigger, args=[task], id=f'task_{idx}', replace_existing=True)
     def trigger_task(self, task):
         debug_log(f'调度触发：{task}')
+        # 判断提醒时间段
+        now = datetime.now().time()
+        remind_start = task.get('remind_start', '00:00')
+        remind_end = task.get('remind_end', '23:59')
+        try:
+            start_h, start_m = map(int, remind_start.split(':'))
+            end_h, end_m = map(int, remind_end.split(':'))
+            start_time = dtime(start_h, start_m)
+            end_time = dtime(end_h, end_m)
+            if not (start_time <= now <= end_time):
+                debug_log(f'当前时间{now}不在提醒时间段{remind_start}-{remind_end}内，跳过提醒')
+                return
+        except Exception as e:
+            debug_log(f'提醒时间段解析异常：{e}')
+            # 出错时默认不限制
         if task['cycle_type'] in ('法定工作日', '法定节假日'):
             try:
                 today = datetime.now().strftime('%Y-%m-%d')
