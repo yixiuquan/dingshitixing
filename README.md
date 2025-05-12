@@ -73,7 +73,7 @@ pyinstaller -F main.py --add-data "output.ico;." --noconsole
 ![image](https://github.com/user-attachments/assets/33843a11-bce1-47f5-919b-d9cbcff12848)
 ![image](https://github.com/user-attachments/assets/c591e35c-cd70-4970-82bb-85d98e65c7f2)
 ![image](https://github.com/user-attachments/assets/8daea369-bb5a-432b-8582-4d10bcce98ab)
-![image](https://github.com/user-attachments/assets/7cc15fbe-3d5d-4549-a106-86a25942d9d4)
+![image](https://github.com/user-attachments/assets/7d3e3074-a504-40a8-89ff-027fe35b171b)
 
 ---
 
