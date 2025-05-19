@@ -15,6 +15,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import logging
+import ctypes
 
 CYCLE_TYPES = [
     '法定工作日', '法定节假日', '周末', '每天', '自定义', '时间间隔'
@@ -506,7 +507,7 @@ class MainWindow(QMainWindow):
             try:
                 # 使用管理员权限执行重启命令
                 # os.system('powershell -Command "Start-Process shutdown -ArgumentList \'/r /t 0\' -Verb RunAs"')
-                os.system('shutdown /r /t 0')
+                os.system('schtasks /run /tn "定时软件调用重启"')
                 debug_log('执行重启命令')
             except Exception as e:
                 debug_log(f'重启命令执行失败: {e}')
@@ -520,9 +521,18 @@ class MainWindow(QMainWindow):
             QMessageBox.information(None, title, content)
         QTimer.singleShot(0, popup)
 
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
 def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    if not is_admin():
+        QMessageBox.warning(None, "权限不足", "请以管理员身份运行本程序，否则无法自动重启或关机。")
+        return
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
