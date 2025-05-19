@@ -497,9 +497,19 @@ class MainWindow(QMainWindow):
         if task['type'] == '提醒':
             self.reminder_signal.remind.emit(task)
         elif task['type'] == '关机':
-            os.system('shutdown /s /t 0')
+            try:
+                os.system('powershell -Command "Start-Process shutdown -ArgumentList \'/s /t 0\' -Verb RunAs"')
+                debug_log('执行关机命令')
+            except Exception as e:
+                debug_log(f'关机命令执行失败: {e}')
         elif task['type'] == '重启':
-            os.system('shutdown /r /t 0')
+            try:
+                # 使用管理员权限执行重启命令
+                # os.system('powershell -Command "Start-Process shutdown -ArgumentList \'/r /t 0\' -Verb RunAs"')
+                os.system('shutdown /r /t 0')
+                debug_log('执行重启命令')
+            except Exception as e:
+                debug_log(f'重启命令执行失败: {e}')
         elif task['type'] == '锁定':
             os.system('rundll32.exe user32.dll,LockWorkStation')
     def show_reminder(self, task):
